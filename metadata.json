@@ -1,0 +1,6 @@
+{
+  "name": "Murder Mystery Game",
+  "description": "An interactive murder mystery game with customizable character names, crime scene investigation, evidence collection, dynamic suspect interrogation, and deduction notebook.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
