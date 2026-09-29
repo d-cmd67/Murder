@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DetectiveProfile, CustomNames } from '../types';
+import { DetectiveProfile, CustomNames, Suspect, SuspectId, ALL_SUSPECT_IDS } from '../types';
 import { Shield, User, Sparkles, BookOpen, UserCheck, Eye, Compass, Award, ArrowRight, Check } from 'lucide-react';
 import { sounds } from '../utils/sound';
 
@@ -8,6 +8,7 @@ interface CharacterCreatorViewProps {
   onUpdateDetective: (profile: DetectiveProfile) => void;
   customNames: CustomNames;
   onUpdateCustomNames: (names: CustomNames) => void;
+  suspects?: Record<string, Suspect>;
   onStartInvestigation: () => void;
 }
 
@@ -49,9 +50,12 @@ export const CharacterCreatorView: React.FC<CharacterCreatorViewProps> = ({
   onUpdateDetective,
   customNames,
   onUpdateCustomNames,
+  suspects,
   onStartInvestigation,
 }) => {
   const [selectedAppearanceIndex, setSelectedAppearanceIndex] = useState(0);
+
+  const suspectKeys = suspects ? (Object.keys(suspects) as SuspectId[]) : [];
 
   const handleNameChange = (val: string) => {
     onUpdateDetective({ ...detectiveProfile, name: val });
@@ -98,11 +102,11 @@ export const CharacterCreatorView: React.FC<CharacterCreatorViewProps> = ({
             </h2>
           </div>
 
-          {/* Name & Badge Number */}
+          {/* Primary & Secondary Detective Names */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-mono font-bold text-amber-400 uppercase">
-                Detective Name:
+                Primary Lead Detective Name:
               </label>
               <input
                 type="text"
@@ -114,6 +118,25 @@ export const CharacterCreatorView: React.FC<CharacterCreatorViewProps> = ({
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-mono font-bold text-indigo-400 uppercase">
+                Secondary Detective / Partner Name:
+              </label>
+              <input
+                type="text"
+                value={detectiveProfile.detective2 || customNames.detective2 || 'Inspector Devrik Basu'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onUpdateDetective({ ...detectiveProfile, detective2: val });
+                  onUpdateCustomNames({ ...customNames, detective2: val });
+                }}
+                placeholder="e.g. Inspector Devrik Basu"
+                className="w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-indigo-100 font-serif focus:outline-none shadow-inner"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <label className="text-xs font-mono font-bold text-amber-400 uppercase">
                 Badge / License ID:
               </label>
@@ -122,6 +145,18 @@ export const CharacterCreatorView: React.FC<CharacterCreatorViewProps> = ({
                 value={detectiveProfile.badgeNumber}
                 onChange={(e) => onUpdateDetective({ ...detectiveProfile, badgeNumber: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-amber-100 font-mono focus:outline-none shadow-inner"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono font-bold text-indigo-400 uppercase">
+                Partner Unit Assignment:
+              </label>
+              <input
+                type="text"
+                value={detectiveProfile.partnerSpecialization || 'Special Cyber Operations Unit'}
+                onChange={(e) => onUpdateDetective({ ...detectiveProfile, partnerSpecialization: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-indigo-100 font-mono focus:outline-none shadow-inner"
               />
             </div>
           </div>
@@ -260,32 +295,28 @@ export const CharacterCreatorView: React.FC<CharacterCreatorViewProps> = ({
               </div>
 
               {/* Suspects & Witnesses */}
-              {[
-                { name: customNames.suspect1 || 'Aviral', role: 'Ambitious Business Partner & Tech Executive' },
-                { name: customNames.suspect2 || 'Navyansh Sharda', role: 'Lead AI Architect & Key System Developer' },
-                { name: customNames.suspect3 || 'Vivaan Tyagi', role: 'Secret Heir & High-Stakes Gambler' },
-                { name: customNames.suspect4 || 'Kushagra', role: 'Silent Financial Audit Strategist' },
-                { name: customNames.suspect5 || 'Divyansh Saxena', role: 'Senior Financial Audit Officer' },
-                { name: customNames.suspect6 || 'Nabhya Tyagi', role: 'Venture Capitalist & Primary Investor' },
-                { name: customNames.suspect7 || 'Kinshuk', role: 'Estate Manager & Head Butler' },
-                { name: customNames.suspect8 || 'Gaurvaansh Anand', role: 'Chief of Estate Physical Security' },
-                { name: customNames.suspect9 || 'Arnav Rai', role: 'Investigative Crime Reporter' },
-              ].map((member, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:border-amber-900/50 transition-colors"
-                >
-                  <div>
-                    <div className="text-xs font-serif font-bold text-amber-100 flex items-center space-x-1.5">
-                      <span>🕵️ {member.name}</span>
+              {(suspectKeys.length > 0 ? suspectKeys : ALL_SUSPECT_IDS).map((sKey, idx) => {
+                const suspect = suspects?.[sKey];
+                const customName = customNames[sKey as keyof CustomNames] || suspect?.defaultName || `Suspect #${idx + 1}`;
+                const role = suspect?.role || 'Suspect Person of Interest';
+
+                return (
+                  <div
+                    key={sKey}
+                    className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between hover:border-amber-900/50 transition-colors"
+                  >
+                    <div>
+                      <div className="text-xs font-serif font-bold text-amber-100 flex items-center space-x-1.5">
+                        <span>🕵️ {customName}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">{role}</p>
                     </div>
-                    <p className="text-[10px] text-slate-400">{member.role}</p>
+                    <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                      SUSPECT #{idx + 1}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    SUSPECT #{idx + 1}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
 
             </div>
 

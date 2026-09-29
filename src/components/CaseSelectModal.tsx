@@ -125,6 +125,7 @@ export const CaseSelectModal: React.FC<CaseSelectModalProps> = ({
                   className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-amber-100 focus:outline-none"
                 >
                   <option value="Classic Noir">Classic 1940s Noir</option>
+                  <option value="St. Jude High - Class 9A School">St. Jude High - Class 9A School</option>
                   <option value="Cyberpunk Syndicate">Cyberpunk Neon City</option>
                   <option value="Victorian Manor">Victorian Gothic</option>
                   <option value="Luxury Cruise Ship">Luxury Ocean Liner</option>

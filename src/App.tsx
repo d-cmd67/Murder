@@ -12,17 +12,33 @@ import { PRESET_CASES } from './data/presetCases';
 import { PRESET_NAME_PACKAGES, replaceNames } from './utils/nameFormatter';
 import { randomizeCase } from './utils/caseRandomizer';
 import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { NameManagerModal } from './components/NameManagerModal';
 import { CrimeSceneView } from './components/CrimeSceneView';
 import { InterrogationView } from './components/InterrogationView';
 import { EvidenceView } from './components/EvidenceView';
 import { NotebookView } from './components/NotebookView';
+import { PhoneSocialMediaView } from './components/PhoneSocialMediaView';
+import { CaseBoard } from './components/CaseBoard';
+import { TimelineView } from './components/TimelineView';
+import { ContradictionsView } from './components/ContradictionsView';
+import { SuspectDossiersView } from './components/SuspectDossiersView';
+import { ForensicLabView } from './components/ForensicLabView';
+import { MotiveMatrixView } from './components/MotiveMatrixView';
+import { SurveillanceView } from './components/SurveillanceView';
+import { CaseAnalyticsView } from './components/CaseAnalyticsView';
 import { AccusationModal } from './components/AccusationModal';
 import { CaseSelectModal } from './components/CaseSelectModal';
+import { BackgroundDecorations } from './components/BackgroundDecorations';
 import { sounds } from './utils/sound';
 
 import { CharacterCreatorView } from './components/CharacterCreatorView';
+import { DeveloperCastView } from './components/DeveloperCastView';
+import { ExtraTabsViews } from './components/ExtraTabsViews';
+import { CrimeSceneMapModal } from './components/CrimeSceneMapModal';
 import { DetectiveProfile } from './types';
+import { isPlayerInSameRoomAsPrimarySuspect } from './utils/suspectLocationUtils';
+import { Map } from 'lucide-react';
 
 export default function App() {
   const [stage, setStage] = useState<GameStage>('INVESTIGATING');
@@ -35,6 +51,7 @@ export default function App() {
   // Detective Profile State
   const [detectiveProfile, setDetectiveProfile] = useState<DetectiveProfile>({
     name: PRESET_NAME_PACKAGES[0].names.detective,
+    detective2: PRESET_NAME_PACKAGES[0].names.detective2 || 'Nabhya Tyagi',
     appearance: 'Classic charcoal trenchcoat, fedora, and brass pocket watch.',
     backstory: 'Ex-Special Homicide Inspector known for unblemished record and relentless deduction.',
     specialization: 'Forensic Analyst',
@@ -46,12 +63,62 @@ export default function App() {
   const [evidenceList, setEvidenceList] = useState<Evidence[]>(initialRandomizedCase.evidenceList);
   const [suspects, setSuspects] = useState<Record<SuspectId, Suspect>>(initialRandomizedCase.suspects);
   const [notes, setNotes] = useState<string>('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(initialRandomizedCase.locations[0]?.id || 'loc_dining');
+  const [latestDiscoveredEvidence, setLatestDiscoveredEvidence] = useState<{
+    title: string;
+    id: string;
+    timestamp: number;
+  } | null>(null);
   
   // UI Controls
   const [isNameManagerOpen, setIsNameManagerOpen] = useState(false);
   const [isCaseSelectOpen, setIsCaseSelectOpen] = useState(false);
+  const [isCrimeSceneMapOpen, setIsCrimeSceneMapOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>('🕵️ Mystery initialized with randomized murderer & evidence!');
+
+  // Developer Access Code State (Code: 888513)
+  const [isDeveloperUnlocked, setIsDeveloperUnlocked] = useState(false);
+
+  const handleUnlockDeveloperCode = (code: string) => {
+    if (code.trim() === '888513') {
+      setIsDeveloperUnlocked(true);
+      setToastMessage('⚡ DEVELOPER CODE 888513 ACTIVATED! Cast Tabs & Secrets Unlocked.');
+      sounds.playClueFound();
+      return true;
+    }
+    return false;
+  };
+
+  const handleChangeKiller = (newKillerId: SuspectId, newKillerId2?: SuspectId) => {
+    const k2 = newKillerId2 || (newKillerId === 'suspect3' ? 'suspect9' : 'suspect2');
+    setCurrentCase((prev) => ({
+      ...prev,
+      killerId: newKillerId,
+      killerId2: k2,
+    }));
+    setSuspects((prev) => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach((k) => {
+        const sKey = k as SuspectId;
+        if (updated[sKey]) {
+          const isK1 = sKey === newKillerId;
+          const isK2 = sKey === k2 && k2 !== newKillerId;
+          updated[sKey] = {
+            ...updated[sKey],
+            isKiller: isK1 || isK2,
+            killerRole: isK1 ? 'Primary Mastermind' : isK2 ? 'Co-Conspirator Accomplice' : undefined,
+          };
+        }
+      });
+      return updated;
+    });
+    setToastMessage(`⚡ DEVELOPER OVERRIDE: Duo culprits updated to ${customNames[newKillerId as keyof CustomNames] || newKillerId} & ${customNames[k2 as keyof CustomNames] || k2}!`);
+  };
+
+  // Sidebar Controls
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (toastMessage) {
@@ -75,6 +142,10 @@ export default function App() {
     setEvidenceList(randomized.evidenceList.map(e => ({ ...e, discovered: false })));
     setSuspects(randomized.suspects);
     setNotes('');
+    setLatestDiscoveredEvidence(null);
+    if (randomized.locations[0]) {
+      setSelectedLocationId(randomized.locations[0].id);
+    }
     setStage('INVESTIGATING');
     setToastMessage('🎲 New Case Loaded! The killer & evidence trail have been randomized.');
   };
@@ -91,6 +162,10 @@ export default function App() {
     setEvidenceList(randomized.evidenceList.map(e => ({ ...e, discovered: false })));
     setSuspects(randomized.suspects);
     setNotes('');
+    setLatestDiscoveredEvidence(null);
+    if (randomized.locations[0]) {
+      setSelectedLocationId(randomized.locations[0].id);
+    }
     setStage('INVESTIGATING');
     setToastMessage('🔀 Case Murderer Reshuffled! Suspect roles and evidence have been re-assigned.');
   };
@@ -108,6 +183,14 @@ export default function App() {
     );
 
     if (evidenceId) {
+      const targetEv = evidenceList.find((e) => e.id === evidenceId);
+      if (targetEv && !targetEv.discovered) {
+        setLatestDiscoveredEvidence({
+          title: replaceNames(targetEv.title, customNames),
+          id: evidenceId,
+          timestamp: Date.now(),
+        });
+      }
       setEvidenceList((prevEv) =>
         prevEv.map((ev) => (ev.id === evidenceId ? { ...ev, discovered: true } : ev))
       );
@@ -233,39 +316,74 @@ export default function App() {
 
   const discoveredCount = evidenceList.filter((e) => e.discovered).length;
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 flex flex-col">
-      
-      {/* Top Notification Toast */}
-      {toastMessage && (
-        <div className="bg-indigo-900 border-b border-indigo-600/60 text-indigo-100 px-4 py-2 text-xs font-mono text-center flex items-center justify-center space-x-2 animate-fadeIn shadow-lg sticky top-16 z-20">
-          <span>{toastMessage}</span>
-        </div>
-      )}
+  const isSameRoomAsPrimarySuspect = isPlayerInSameRoomAsPrimarySuspect(selectedLocationId, currentCase, locations);
 
-      {/* Top Navigation */}
-      <Navbar
+  return (
+    <div className="relative min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 flex overflow-x-hidden">
+      
+      {/* Creative Atmospheric Background */}
+      <BackgroundDecorations />
+      
+      {/* Sidebar Navigation */}
+      <Sidebar
         currentStage={stage}
         setStage={setStage}
-        caseTitle={replaceNames(currentCase.title, customNames)}
-        customNames={customNames}
-        onOpenNameManager={() => setIsNameManagerOpen(true)}
-        onOpenCaseSelector={() => setIsCaseSelectOpen(true)}
-        onShuffleCase={handleShuffleCase}
-        soundEnabled={soundEnabled}
-        setSoundEnabled={setSoundEnabled}
         evidenceCount={discoveredCount}
         totalEvidence={evidenceList.length}
+        isOpen={isSidebarOpen}
+        onToggleOpen={() => setIsSidebarOpen(!isSidebarOpen)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onShuffleCase={handleShuffleCase}
+        onOpenNameManager={() => setIsNameManagerOpen(true)}
+        onOpenCaseSelector={() => setIsCaseSelectOpen(true)}
+        soundEnabled={soundEnabled}
+        setSoundEnabled={setSoundEnabled}
+        isDeveloperUnlocked={isDeveloperUnlocked}
+        customNames={customNames}
+        onOpenCrimeSceneMap={() => setIsCrimeSceneMapOpen(true)}
+        isSameRoomAsPrimarySuspect={isSameRoomAsPrimarySuspect}
       />
 
-      {/* Main View Area */}
-      <main className="flex-1 pb-12">
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen relative z-10">
+
+        {/* Top Notification Toast */}
+        {toastMessage && (
+          <div className="bg-indigo-900 border-b border-indigo-600/60 text-indigo-100 px-4 py-2 text-xs font-mono text-center flex items-center justify-center space-x-2 animate-fadeIn shadow-lg sticky top-0 z-30">
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
+        {/* Top Header Bar */}
+        <Navbar
+          currentStage={stage}
+          setStage={setStage}
+          caseTitle={replaceNames(currentCase.title, customNames)}
+          customNames={customNames}
+          detectiveProfile={detectiveProfile}
+          onOpenNameManager={() => setIsNameManagerOpen(true)}
+          onOpenCaseSelector={() => setIsCaseSelectOpen(true)}
+          onShuffleCase={handleShuffleCase}
+          soundEnabled={soundEnabled}
+          setSoundEnabled={setSoundEnabled}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          discoveredCount={discoveredCount}
+          totalEvidence={evidenceList.length}
+          latestDiscoveredEvidence={latestDiscoveredEvidence}
+          onOpenCrimeSceneMap={() => setIsCrimeSceneMapOpen(true)}
+          isSameRoomAsPrimarySuspect={isSameRoomAsPrimarySuspect}
+        />
+
+        {/* Main View Area */}
+        <main className="flex-1 pb-12 overflow-x-hidden">
         {stage === 'CHARACTER_CREATOR' && (
           <CharacterCreatorView
             detectiveProfile={detectiveProfile}
             onUpdateDetective={setDetectiveProfile}
             customNames={customNames}
             onUpdateCustomNames={setCustomNames}
+            suspects={suspects}
             onStartInvestigation={() => setStage('INVESTIGATING')}
           />
         )}
@@ -276,16 +394,21 @@ export default function App() {
             evidenceList={evidenceList}
             customNames={customNames}
             onInspectClue={handleInspectClue}
+            selectedLocationId={selectedLocationId}
+            onSelectLocation={setSelectedLocationId}
+            onOpenMapModal={() => setIsCrimeSceneMapOpen(true)}
+            currentCase={currentCase}
           />
         )}
 
-        {stage === 'INTERROGATING' && (
+        {(stage === 'INTERROGATING' || stage === 'POLYGRAPH_TEST') && (
           <InterrogationView
             suspects={suspects}
             customNames={customNames}
             evidenceList={evidenceList}
             currentCase={currentCase}
             onSendMessage={handleSendMessage}
+            initialSubTab={stage === 'POLYGRAPH_TEST' ? 'polygraph' : 'chat'}
           />
         )}
 
@@ -303,6 +426,116 @@ export default function App() {
             currentCase={currentCase}
             notes={notes}
             onUpdateNotes={setNotes}
+          />
+        )}
+
+        {stage === 'PHONE_LEAKS' && (
+          <PhoneSocialMediaView
+            customNames={customNames}
+            suspects={suspects}
+            currentCase={currentCase}
+          />
+        )}
+
+        {stage === 'CASE_BOARD' && (
+          <CaseBoard
+            suspects={suspects}
+            evidenceList={evidenceList}
+            currentCase={currentCase}
+            customNames={customNames}
+          />
+        )}
+
+        {stage === 'TIMELINE' && (
+          <TimelineView
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+            evidenceList={evidenceList}
+          />
+        )}
+
+        {stage === 'CONTRADICTIONS' && (
+          <ContradictionsView
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+            evidenceList={evidenceList}
+            onExposeContradiction={(sId) => {
+              setSuspects(prev => ({
+                ...prev,
+                [sId]: {
+                  ...prev[sId],
+                  suspicionLevel: Math.min(100, prev[sId].suspicionLevel + 25),
+                }
+              }));
+              setToastMessage(`🚨 CONTRADICTION EXPOSED! Suspicion level increased for ${customNames[sId as keyof CustomNames] || suspects[sId]?.defaultName}!`);
+              setTimeout(() => setToastMessage(null), 5000);
+            }}
+          />
+        )}
+
+        {stage === 'SUSPECT_DOSSIERS' && (
+          <SuspectDossiersView
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+          />
+        )}
+
+        {stage === 'FORENSIC_LAB' && (
+          <ForensicLabView
+            currentCase={currentCase}
+            customNames={customNames}
+            evidenceList={evidenceList}
+          />
+        )}
+
+        {stage === 'MOTIVE_MATRIX' && (
+          <MotiveMatrixView
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+          />
+        )}
+
+        {stage === 'SURVEILLANCE' && (
+          <SurveillanceView
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+          />
+        )}
+
+        {stage === 'CASE_ANALYTICS' && (
+          <CaseAnalyticsView
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+            evidenceList={evidenceList}
+            onShuffleCase={handleShuffleCase}
+          />
+        )}
+
+        {stage === 'DEVELOPER_CAST' && (
+          <DeveloperCastView
+            currentCase={currentCase}
+            customNames={customNames}
+            onUpdateCustomNames={setCustomNames}
+            onUpdateSuspects={setSuspects}
+            onChangeKiller={handleChangeKiller}
+            isDeveloperUnlocked={isDeveloperUnlocked}
+            onUnlockDeveloperCode={handleUnlockDeveloperCode}
+          />
+        )}
+
+        {!['CHARACTER_CREATOR', 'INVESTIGATING', 'INTERROGATING', 'EVIDENCE', 'NOTEBOOK', 'PHONE_LEAKS', 'CASE_BOARD', 'TIMELINE', 'CONTRADICTIONS', 'SUSPECT_DOSSIERS', 'FORENSIC_LAB', 'MOTIVE_MATRIX', 'SURVEILLANCE', 'CASE_ANALYTICS', 'DEVELOPER_CAST', 'ACCUSATION'].includes(stage) && (
+          <ExtraTabsViews
+            stage={stage}
+            currentCase={currentCase}
+            customNames={customNames}
+            suspects={suspects}
+            evidenceList={evidenceList}
           />
         )}
 
@@ -327,6 +560,9 @@ export default function App() {
           setCustomNames(newNames);
           sounds.playPaperFlip();
         }}
+        isDeveloperUnlocked={isDeveloperUnlocked}
+        onUnlockDeveloperCode={handleUnlockDeveloperCode}
+        killerId={currentCase.killerId || (currentCase as any).killerSuspectId}
       />
 
       <CaseSelectModal
@@ -337,10 +573,71 @@ export default function App() {
         onGenerateAICase={handleGenerateAICase}
       />
 
+      <CrimeSceneMapModal
+        isOpen={isCrimeSceneMapOpen}
+        onClose={() => setIsCrimeSceneMapOpen(false)}
+        locations={locations}
+        evidenceList={evidenceList}
+        customNames={customNames}
+        currentLocationId={selectedLocationId}
+        onSelectLocation={(locId) => {
+          setSelectedLocationId(locId);
+          setStage('INVESTIGATING');
+        }}
+        onInspectClue={(locId, clueId, evidenceId) => {
+          setSelectedLocationId(locId);
+          handleInspectClue(locId, clueId, evidenceId);
+          setStage('INVESTIGATING');
+        }}
+        currentCase={currentCase}
+      />
+
+      {/* Floating Quick Action Map Trigger Button */}
+      {stage !== 'CHARACTER_CREATOR' && (
+        <button
+          onClick={() => {
+            sounds.playClick();
+            setIsCrimeSceneMapOpen(true);
+          }}
+          className={`fixed bottom-5 right-5 z-40 px-3.5 py-2.5 rounded-2xl bg-slate-950/95 hover:bg-slate-900 font-bold border-2 shadow-2xl flex items-center space-x-2 transition-all active:scale-95 group cursor-pointer backdrop-blur-md ${
+            isSameRoomAsPrimarySuspect
+              ? 'text-rose-200 border-rose-500 shadow-rose-950/90 hover:border-rose-400'
+              : 'text-amber-300 border-amber-500/80 shadow-amber-950/90 hover:border-amber-400'
+          }`}
+          title={isSameRoomAsPrimarySuspect ? "⚠️ PRIMARY SUSPECT IS IN THIS ROOM! Click to open Map" : "Quick Navigate Crime Scene Locations Map"}
+        >
+          <div className="relative flex items-center justify-center shrink-0">
+            <Map className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform animate-pulse" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              {isSameRoomAsPrimarySuspect ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
+                </>
+              ) : (
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              )}
+            </span>
+          </div>
+          <span className="text-xs font-mono font-bold tracking-wider hidden sm:inline">CRIME SCENE MAP</span>
+          {isSameRoomAsPrimarySuspect ? (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-950 text-rose-200 border border-rose-600 font-bold shrink-0 animate-pulse">
+              SUSPECT HERE!
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/60 shrink-0">
+              {locations.length} Sectors
+            </span>
+          )}
+        </button>
+      )}
+
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500 font-mono">
         Noir Murder Mystery Engine &bull; Custom Character Name Integration &bull; Powered by Gemini AI
       </footer>
+
+      </div>
 
     </div>
   );

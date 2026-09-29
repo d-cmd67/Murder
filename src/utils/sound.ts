@@ -3,14 +3,18 @@ class SoundController {
   public enabled: boolean = true;
 
   private initCtx() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
       }
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    } catch {
+      // AudioContext unavailable or restricted
     }
   }
 
@@ -110,6 +114,123 @@ class SoundController {
     gain.connect(this.ctx.destination);
 
     whiteNoise.start(now);
+  }
+
+  playCameraShutter() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1400, now);
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(now + 0.04);
+  }
+
+  playHeartbeatPulse() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(70, now);
+    osc.frequency.exponentialRampToValueAtTime(35, now + 0.12);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(now + 0.12);
+  }
+
+  playSpike() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(150, now + 0.18);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(now + 0.18);
+  }
+
+  playUVToggle() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(now + 0.08);
+  }
+
+  playEvidenceScan() {
+    if (!this.enabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    // Harmonic scanner frequency sweep
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain1 = this.ctx.createGain();
+    const gain2 = this.ctx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(260, now);
+    osc1.frequency.exponentialRampToValueAtTime(1400, now + 0.22);
+    osc1.frequency.exponentialRampToValueAtTime(680, now + 0.45);
+
+    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(784, now + 0.04);
+    osc2.frequency.setValueAtTime(1046.5, now + 0.16);
+    osc2.frequency.setValueAtTime(1567.98, now + 0.32);
+
+    gain2.gain.setValueAtTime(0.001, now);
+    gain2.gain.setValueAtTime(0.12, now + 0.04);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+    osc1.connect(gain1);
+    gain1.connect(this.ctx.destination);
+    osc2.connect(gain2);
+    gain2.connect(this.ctx.destination);
+
+    osc1.start(now);
+    osc1.stop(now + 0.45);
+    osc2.start(now + 0.04);
+    osc2.stop(now + 0.55);
   }
 }
 

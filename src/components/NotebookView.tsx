@@ -21,7 +21,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
 }) => {
   const suspectKeys = Object.keys(suspects) as SuspectId[];
   const [clearedSuspects, setClearedSuspects] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<'matrix' | 'timeline' | 'motives'>('matrix');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'mindmap' | 'timeline' | 'motives'>('matrix');
 
   const toggleCleared = (id: string) => {
     sounds.playClick();
@@ -29,18 +29,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   };
 
   const getCustomName = (id: SuspectId) => {
-    switch (id) {
-      case 'suspect1': return customNames.suspect1 || suspects[id]?.defaultName;
-      case 'suspect2': return customNames.suspect2 || suspects[id]?.defaultName;
-      case 'suspect3': return customNames.suspect3 || suspects[id]?.defaultName;
-      case 'suspect4': return customNames.suspect4 || suspects[id]?.defaultName;
-      case 'suspect5': return customNames.suspect5 || suspects[id]?.defaultName;
-      case 'suspect6': return customNames.suspect6 || suspects[id]?.defaultName;
-      case 'suspect7': return customNames.suspect7 || suspects[id]?.defaultName;
-      case 'suspect8': return customNames.suspect8 || suspects[id]?.defaultName;
-      case 'suspect9': return customNames.suspect9 || suspects[id]?.defaultName;
-      default: return suspects[id]?.defaultName || 'Suspect';
-    }
+    return customNames[id as keyof CustomNames] || suspects[id]?.defaultName || 'Suspect';
   };
 
   return (
@@ -62,7 +51,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center space-x-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800 self-start md:self-center">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800 self-start md:self-center">
           <button
             onClick={() => setActiveTab('matrix')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
@@ -70,6 +59,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
             }`}
           >
             Suspect Matrix ({suspectKeys.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('mindmap')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+              activeTab === 'mindmap' ? 'bg-amber-600 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            📌 Case Board
           </button>
           <button
             onClick={() => setActiveTab('timeline')}
@@ -161,7 +158,75 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
             </div>
           )}
 
-          {/* TAB 2: PLOT TIMELINE */}
+          {/* TAB 2: CASE BOARD / MIND MAP */}
+          {activeTab === 'mindmap' && (
+            <div className="space-y-4 bg-slate-900 border border-amber-900/40 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center space-x-2 text-amber-300 font-serif font-bold text-base">
+                  <Compass className="w-5 h-5 text-amber-500" />
+                  <span>Detective Case Board & Red Thread Links</span>
+                </div>
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-950/80 px-2 py-1 rounded border border-amber-800">
+                  VISUAL NETWORK MAP
+                </span>
+              </div>
+
+              {/* Central Victim Node */}
+              <div className="flex flex-col items-center justify-center p-4 bg-rose-950/80 border-2 border-rose-600 rounded-2xl shadow-xl space-y-1 text-center">
+                <span className="text-[10px] font-mono font-bold text-rose-300 uppercase tracking-widest">
+                  VICTIM (CENTER OF INVESTIGATION)
+                </span>
+                <h3 className="text-xl font-serif font-bold text-rose-100">
+                  {customNames.victim}
+                </h3>
+                <p className="text-xs text-rose-200/90 font-mono">
+                  Location: {customNames.location} &bull; Time of Crime: {currentCase.timeOfDeath}
+                </p>
+              </div>
+
+              {/* Red String Connections Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                {suspectKeys.map((id) => {
+                  const s = suspects[id];
+                  if (!s) return null;
+                  const name = getCustomName(id);
+                  const isCleared = !!clearedSuspects[id];
+                  const suspicion = s.suspicionLevel || 20;
+
+                  return (
+                    <div
+                      key={id}
+                      className={`p-4 rounded-xl border relative space-y-2 transition-all ${
+                        isCleared
+                          ? 'bg-slate-950/50 border-slate-800 opacity-50'
+                          : suspicion > 60
+                          ? 'bg-amber-950/60 border-amber-500 shadow-md'
+                          : 'bg-slate-950/80 border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-serif font-bold text-amber-100">{name}</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-amber-400 border border-slate-800">
+                          {s.role}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 line-clamp-2">
+                        <strong className="text-slate-400 font-mono">Link: </strong>
+                        {replaceNames(s.relationToVictim, customNames)}
+                      </p>
+                      <div className="pt-1 flex items-center justify-between text-[10px] font-mono text-slate-400 border-t border-slate-900">
+                        <span>Threat Index: <strong className="text-amber-400">{suspicion}%</strong></span>
+                        <span className="text-rose-400">🔴 Connected by thread</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 3: PLOT TIMELINE */}
           {activeTab === 'timeline' && (
             <div className="space-y-4 bg-slate-900 border border-amber-900/40 rounded-2xl p-6 shadow-xl">
               <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
